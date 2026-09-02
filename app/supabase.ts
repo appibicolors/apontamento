@@ -17,6 +17,8 @@ export async function loadProfiles(token:string):Promise<Perfil[]>{const respons
 export async function loadMachines(token:string):Promise<Maquina[]>{const response=await supabaseFetch("/rest/v1/maquinas?select=id,codigo,nome,setor&ativa=eq.true&order=codigo",{},token);return response.json()}
 export async function startOperation(token:string,operacaoId:string,operadorId:string,maquinaId:string,observacao:string){await supabaseFetch("/rest/v1/rpc/iniciar_operacao",{method:"POST",body:JSON.stringify({p_operacao_id:operacaoId,p_operador_id:operadorId,p_maquina_id:maquinaId,p_observacao:observacao||null})},token)}
 export async function finishOperation(token:string,operacaoId:string,observacao:string){await supabaseFetch("/rest/v1/rpc/finalizar_operacao",{method:"POST",body:JSON.stringify({p_operacao_id:operacaoId,p_observacao:observacao||null})},token)}
+export async function createMachine(token:string,data:{codigo:string;nome:string;setor:string}){await supabaseFetch("/rest/v1/maquinas",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...data,codigo:data.codigo.trim().toUpperCase(),nome:data.nome.trim(),setor:data.setor.trim()||null})},token)}
+export async function createOperator(data:{nome:string;email:string;password:string}){await supabaseFetch("/auth/v1/signup",{method:"POST",body:JSON.stringify({email:data.email.trim().toLowerCase(),password:data.password,data:{nome:data.nome.trim(),perfil:"operador"}})})}
 export async function saveOrders(orders:ParsedOrder[],session:Session){
   for(const order of orders){
     const {operacoes,...record}=order;
