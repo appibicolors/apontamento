@@ -28,7 +28,7 @@ export async function parseProductionOrders(file:File):Promise<ParsedOrder[]>{
       const nfMatch=headerRows.find(line=>/^\d+\s+\d{2}\/\d{2}\/\d{4}$/.test(line))?.match(/^(\d+)\s+(\d{2})\/(\d{2})\/(\d{4})$/);
       const articleLine=articleHeader>=0?clean(`${lines[articleHeader+1]??""} ${lines[articleHeader+2]??""}`):"";
       const article=articleLine.match(/^(\d{6})\s+(.+?)\s+\d{3}\s+TINTO\s+(\d+)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})$/i);
-      order={numero_op:numero,cliente,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",codigo_artigo:article?.[1]??"",artigo:article?.[2]??"",pecas:Number(article?.[3]??0),metros:numberBR(article?.[4]??"0"),peso:numberBR(article?.[5]??"0"),operacoes:[]};found.set(numero,order);
+      order={numero_op:numero,cliente:client,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",codigo_artigo:article?.[1]??"",artigo:article?.[2]??"",pecas:Number(article?.[3]??0),metros:numberBR(article?.[4]??"0"),peso:numberBR(article?.[5]??"0"),operacoes:[]};found.set(numero,order);
     }
     const start=lines.findIndex(line=>searchable(line).includes("DATA INIC")&&searchable(line).includes("OPERADOR"));
     const end=lines.findIndex((line,index)=>index>start&&searchable(line).startsWith("PROCESSO "));
