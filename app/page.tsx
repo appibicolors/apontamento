@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { loadOrders, Ordem, savedSession, saveOrders, saveSession, Session, signIn } from "./supabase";
+import { loadMachines, loadOrders, loadProfiles, Maquina, Ordem, Perfil, savedSession, saveOrders, saveSession, Session, signIn } from "./supabase";
 import { parseProductionOrders, ParsedOrder } from "./pdf-parser";
+import { PointingScreen } from "./pointing-screen";
 
 const ordens = [
   { numero: "267649", artigo: "MAQUINETADO ALGODÃO POSITANO", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 50, status: "Em produção", etapa: "Jigger cores claras/médias", maquina: "JIGGER 02", operador: "João Silva", inicio: "08:42", tom: "blue" },
@@ -13,10 +14,12 @@ const ordens = [
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
-  const [modal, setModal] = useState<"import" | "scan" | null>(null);
+  const [modal, setModal] = useState<"import" | "pointing" | null>(null);
   const [fileName, setFileName] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [liveOrders, setLiveOrders] = useState<Ordem[]>([]);
+  const [profiles,setProfiles]=useState<Perfil[]>([]);
+  const [machines,setMachines]=useState<Maquina[]>([]);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,11 +28,11 @@ export default function Home() {
   const [parseError,setParseError]=useState("");
   useEffect(() => {
     const current=savedSession(); setSession(current); setAuthReady(true);
-    if(current) loadOrders(current.access_token).then(setLiveOrders).catch(()=>{saveSession(null);setSession(null)});
+    if(current) Promise.all([loadOrders(current.access_token),loadProfiles(current.access_token),loadMachines(current.access_token)]).then(([orders,people,equipment])=>{setLiveOrders(orders);setProfiles(people);setMachines(equipment)}).catch(()=>{saveSession(null);setSession(null)});
   },[]);
   async function handleLogin(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); const data=new FormData(event.currentTarget); setLoading(true); setAuthError("");
-    try{const next=await signIn(String(data.get("email")),String(data.get("password")));setSession(next);setLiveOrders(await loadOrders(next.access_token))}
+    try{const next=await signIn(String(data.get("email")),String(data.get("password")));setSession(next);const [orders,people,equipment]=await Promise.all([loadOrders(next.access_token),loadProfiles(next.access_token),loadMachines(next.access_token)]);setLiveOrders(orders);setProfiles(people);setMachines(equipment)}
     catch(error){setAuthError(error instanceof Error?error.message:"Falha no acesso.")}finally{setLoading(false)}
   }
   if(!authReady)return <main className="login-shell"><p>Conectando ao ambiente Ibicolors…</p></main>;
@@ -47,7 +50,7 @@ export default function Home() {
         <nav aria-label="Navegação principal">
           <a className="active" href="#painel"><span>▦</span>Painel</a>
           <a href="#ordens"><span>▤</span>Ordens de produção</a>
-          <a href="#apontamento"><span>◎</span>Apontamento</a>
+          <a href="#apontamento" onClick={event=>{event.preventDefault();setModal("pointing")}}><span>◎</span>Apontamento</a>
           <a href="#maquinas"><span>⚙</span>Máquinas</a>
           <a href="#operadores"><span>♙</span>Operadores</a>
         </nav>
@@ -55,7 +58,7 @@ export default function Home() {
       </aside>
 
       <section className="workspace" id="painel">
-        <header><div><p className="eyebrow">VISÃO GERAL</p><h1>Bom dia, André</h1><p>Acompanhe o andamento da produção em tempo real.</p></div><div className="header-actions"><button className="scan" onClick={() => setModal("scan")}>⌗ <span>Escanear QR Code</span></button><button className="primary" onClick={chooseFile}>＋ Nova OP</button><input ref={inputRef} type="file" accept="application/pdf" hidden onChange={(e) => fileSelected(e.target.files?.[0])}/></div></header>
+        <header><div><p className="eyebrow">VISÃO GERAL</p><h1>Bom dia, André</h1><p>Acompanhe o andamento da produção em tempo real.</p></div><div className="header-actions"><button className="scan" onClick={() => setModal("pointing")}>⌗ <span>Escanear QR Code</span></button><button className="primary" onClick={chooseFile}>＋ Nova OP</button><input ref={inputRef} type="file" accept="application/pdf" hidden onChange={(e) => fileSelected(e.target.files?.[0])}/></div></header>
         <div className="live-status"><span>●</span> Banco conectado · {liveOrders.length} OP{liveOrders.length===1?"":"s"} cadastrada{liveOrders.length===1?"":"s"}</div>
         {notice && <div className="notice" role="status"><span>✓</span>{notice}<button onClick={() => setNotice("")} aria-label="Fechar aviso">×</button></div>}
 
@@ -78,9 +81,9 @@ export default function Home() {
           <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Últimos apontamentos realizados</p></div><a href="#historico">Ver histórico</a></div><ul><li><span className="activity-icon green">✓</span><p><b>OP 267648 finalizada</b><small>Revisão concluída por Carlos Mendes</small></p><time>há 12 min</time></li><li><span className="activity-icon blue">▶</span><p><b>Operação iniciada</b><small>OP 267653 · Secagem + acabamento</small></p><time>há 35 min</time></li><li><span className="activity-icon amber">!</span><p><b>Parada registrada</b><small>RAMA 02 · Manutenção preventiva</small></p><time>há 1h</time></li></ul></section>
         </div>
       </section>
-      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}><section className="modal" role="dialog" aria-modal="true" aria-label={modal === "import" ? "Importar ordem de produção" : "Apontamento rápido"} onMouseDown={(e) => e.stopPropagation()}>
+      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setModal(null)} aria-label="Fechar">×</button>
-        {modal==="import"?<>
+        <>
           {importing&&!parsedOrders.length?<div className="reading-state"><span></span><h2>Lendo ordem de produção…</h2><p>Extraindo dados e fluxo do documento.</p></div>:<>
             <span className={`modal-symbol ${parseError?"warning":""}`}>{parseError?"!":"✓"}</span>
             <p className="eyebrow">{parseError?"FALHA NA LEITURA":"CONFIRA ANTES DE GRAVAR"}</p>
@@ -89,8 +92,8 @@ export default function Home() {
             <div className="order-review">{parsedOrders.map((order,index)=><article key={order.numero_op}><div className="review-head"><b>OP {order.numero_op}</b><em>{order.operacoes.length} operações</em></div><div className="review-grid"><label>Cliente<input value={order.cliente} onChange={e=>updateOrder(index,"cliente",e.target.value)}/></label><label>NF entrada<input value={order.nf_entrada} onChange={e=>updateOrder(index,"nf_entrada",e.target.value)}/></label><label>Data OP<input type="date" value={order.data_op} onChange={e=>updateOrder(index,"data_op",e.target.value)}/></label><label className="wide">Artigo<input value={order.artigo} onChange={e=>updateOrder(index,"artigo",e.target.value)}/></label><label>Peças<input type="number" value={order.pecas} onChange={e=>updateOrder(index,"pecas",Number(e.target.value))}/></label><label>Metros<input type="number" step="0.01" value={order.metros} onChange={e=>updateOrder(index,"metros",Number(e.target.value))}/></label><label>Peso<input type="number" step="0.001" value={order.peso} onChange={e=>updateOrder(index,"peso",Number(e.target.value))}/></label></div><ol>{order.operacoes.map(operation=><li key={operation.codigo}><code>{operation.codigo}</code>{operation.descricao}</li>)}</ol></article>)}</div>
             <div className="modal-actions"><button onClick={()=>setModal(null)}>Cancelar</button><button className="primary" disabled={importing||!parsedOrders.length} onClick={publishOrders}>{importing?"Gravando…":"Confirmar e gravar"}</button></div>
           </>}
-        </>:<><span className="qr-frame">⌗</span><p className="eyebrow">APONTAMENTO RÁPIDO</p><h2>Aponte a câmera para o QR Code</h2><p className="modal-copy">Escaneie primeiro o crachá do operador e depois a ordem de produção.</p><div className="scan-steps"><span className="done">1</span><b>Identificar operador</b><i></i><span>2</span><b>Ler ordem de produção</b><i></i><span>3</span><b>Iniciar operação</b></div><button className="full-button" onClick={()=>setModal(null)}>Usar leitor USB</button></>}
-      </section></div>}
+        </>
+      </section>}</div>}
     </main>
   );
 }
