@@ -5,6 +5,7 @@ import { loadMachines, loadOrders, loadProfiles, Maquina, Ordem, Perfil, savedSe
 import { parseProductionOrders, ParsedOrder } from "./pdf-parser";
 import { PointingScreen } from "./pointing-screen";
 import { ManagementScreen } from "./management-screen";
+import { HistoryScreen } from "./history-screen";
 
 const ordens = [
   { numero: "267649", artigo: "MAQUINETADO ALGODÃO POSITANO", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 50, status: "Em produção", etapa: "Jigger cores claras/médias", maquina: "JIGGER 02", operador: "João Silva", inicio: "08:42", tom: "blue" },
@@ -15,7 +16,7 @@ const ordens = [
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
-  const [modal, setModal] = useState<"import" | "pointing" | "machines" | "operators" | null>(null);
+  const [modal, setModal] = useState<"import" | "pointing" | "machines" | "operators" | "history" | null>(null);
   const [fileName, setFileName] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [liveOrders, setLiveOrders] = useState<Ordem[]>([]);
@@ -55,6 +56,7 @@ export default function Home() {
           <a href="#apontamento" onClick={event=>{event.preventDefault();setModal("pointing")}}><span>◎</span>Apontamento</a>
           <a href="#maquinas" onClick={event=>{event.preventDefault();setModal("machines")}}><span>⚙</span>Máquinas</a>
           <a href="#operadores" onClick={event=>{event.preventDefault();setModal("operators")}}><span>♙</span>Operadores</a>
+          <a href="#historico" onClick={event=>{event.preventDefault();setModal("history")}}><span>◷</span>Histórico</a>
         </nav>
         <div className="sidebar-bottom"><a href="#config"><span>⚙</span>Configurações</a><div className="user"><span className="avatar">PC</span><span><b>{session.user.email?.split("@")[0]}</b><small>Conectado</small></span><button aria-label="Sair" onClick={()=>{saveSession(null);setSession(null)}}>↪</button></div></div>
       </aside>
@@ -83,7 +85,7 @@ export default function Home() {
           <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Últimos apontamentos realizados</p></div><a href="#historico">Ver histórico</a></div><ul><li><span className="activity-icon green">✓</span><p><b>OP 267648 finalizada</b><small>Revisão concluída por Carlos Mendes</small></p><time>há 12 min</time></li><li><span className="activity-icon blue">▶</span><p><b>Operação iniciada</b><small>OP 267653 · Secagem + acabamento</small></p><time>há 35 min</time></li><li><span className="activity-icon amber">!</span><p><b>Parada registrada</b><small>RAMA 02 · Manutenção preventiva</small></p><time>há 1h</time></li></ul></section>
         </div>
       </section>
-      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
+      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="history"?<div role="dialog" onMouseDown={e=>e.stopPropagation()}><HistoryScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setModal(null)}/></div>:modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setModal(null)} aria-label="Fechar">×</button>
         <>
           {importing&&!parsedOrders.length?<div className="reading-state"><span></span><h2>Lendo ordem de produção…</h2><p>Extraindo dados e fluxo do documento.</p></div>:<>
