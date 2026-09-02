@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const searchable=(value)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Z0-9\s]/gi," ");
-
 test("reconhece as três OPs do PDF de referência",async()=>{
   const document=await getDocument({url:"../ORDEM DE PRODUÇÃO.pdf"}).promise;
   const found=new Set();
