@@ -12,10 +12,11 @@ export async function loadOrders(token:string):Promise<Ordem[]>{const response=a
 export async function saveOrders(orders:ParsedOrder[],session:Session){
   for(const order of orders){
     const {operacoes,...record}=order;
-    const response=await supabaseFetch("/rest/v1/ordens_producao",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({...record,status:"aguardando",criado_por:session.user.id,dados_extraidos:{origem:"pdf",conferido:true}})},session.access_token);
+    const response=await supabaseFetch("/rest/v1/ordens_producao?on_conflict=numero_op",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify({...record,status:"aguardando",criado_por:session.user.id,dados_extraidos:{origem:"pdf",conferido:true}})},session.access_token);
     const [created]=await response.json();
-    if(operacoes.length)await supabaseFetch("/rest/v1/operacoes",{
-      method:"POST",
+    if(!created?.id)throw new Error(`O Supabase não retornou o cadastro da OP ${order.numero_op}.`);
+    if(operacoes.length)await supabaseFetch("/rest/v1/operacoes?on_conflict=ordem_producao_id,sequencia",{
+      method:"POST",headers:{Prefer:"resolution=merge-duplicates"},
       body:JSON.stringify(operacoes.map((item,index)=>({
         ordem_producao_id:created.id,sequencia:index+1,codigo:item.codigo,
         descricao:item.descricao,status:index===0?"liberada":"aguardando"
