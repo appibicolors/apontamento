@@ -1,0 +1,1 @@
+export function formatDuration(start:string,end:string|null,now=Date.now()){const total=Math.max(0,Math.floor(((end?new Date(end).getTime():now)-new Date(start).getTime())/1000));const h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
