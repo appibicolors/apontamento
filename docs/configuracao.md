@@ -4,10 +4,11 @@
 
 1. Crie um projeto gratuito na conta da empresa.
 2. Abra o SQL Editor e execute `supabase/schema.sql`.
-3. Guarde a URL do projeto e as chaves em variáveis de ambiente da hospedagem.
-4. Nunca coloque a `service_role` no navegador.
+3. Execute também `supabase/002_usuarios_e_permissoes.sql`.
+4. A URL e a chave pública estão configuradas no cliente web.
+5. Nunca coloque uma chave `secret` ou a antiga `service_role` no navegador.
 
-Variáveis previstas: `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` (somente servidor).
+Qualquer futura chave `secret` será configurada exclusivamente no ambiente protegido do servidor.
 
 ## Google Drive
 

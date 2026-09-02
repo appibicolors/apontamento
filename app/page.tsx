@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { loadOrders, Ordem, savedSession, saveSession, Session, signIn } from "./supabase";
 
 const ordens = [
   { numero: "267649", artigo: "MAQUINETADO ALGODÃO POSITANO", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 50, status: "Em produção", etapa: "Jigger cores claras/médias", maquina: "JIGGER 02", operador: "João Silva", inicio: "08:42", tom: "blue" },
@@ -13,6 +14,23 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState<"import" | "scan" | null>(null);
   const [fileName, setFileName] = useState("");
+  const [session, setSession] = useState<Session | null>(null);
+  const [liveOrders, setLiveOrders] = useState<Ordem[]>([]);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const current=savedSession(); setSession(current); setAuthReady(true);
+    if(current) loadOrders(current.access_token).then(setLiveOrders).catch(()=>{saveSession(null);setSession(null)});
+  },[]);
+  async function handleLogin(event:FormEvent<HTMLFormElement>){
+    event.preventDefault(); const data=new FormData(event.currentTarget); setLoading(true); setAuthError("");
+    try{const next=await signIn(String(data.get("email")),String(data.get("password")));setSession(next);setLiveOrders(await loadOrders(next.access_token))}
+    catch(error){setAuthError(error instanceof Error?error.message:"Falha no acesso.")}finally{setLoading(false)}
+  }
+  if(!authReady)return <main className="login-shell"><p>Conectando ao ambiente Ibicolors…</p></main>;
+  if(!session)return <main className="login-shell"><section className="login-card"><div className="brand login-brand"><span className="brand-mark">IP</span><span><b>Ibirapuera</b><small>Produção</small></span></div><p className="eyebrow">AMBIENTE DE TESTES</p><h1>Entrar no apontamento</h1><p>Use o usuário criado no Supabase para acessar a produção.</p><form onSubmit={handleLogin}><label>E-mail<input name="email" type="email" required autoComplete="email"/></label><label>Senha<input name="password" type="password" required autoComplete="current-password"/></label>{authError&&<p className="login-error" role="alert">{authError}</p>}<button className="primary" disabled={loading}>{loading?"Entrando…":"Entrar"}</button></form><small className="connection-ok">● Supabase configurado</small></section></main>;
+  const displayedOrders=liveOrders.length?liveOrders.map(op=>{const operations=[...(op.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia);const finished=operations.filter(x=>x.status==="finalizada").length;const current=operations.find(x=>x.status==="em_andamento")??operations.find(x=>x.status!=="finalizada");const progress=operations.length?Math.round(finished/operations.length*100):0;return{numero:op.numero_op,artigo:op.artigo,cliente:op.cliente,progresso:progress,status:op.status==="em_producao"?"Em produção":op.status==="finalizada"?"Finalizada":"Aguardando",etapa:current?.descricao??"Fluxo não cadastrado",maquina:"—",operador:"—",inicio:"—",tom:op.status==="em_producao"?"blue":"amber"};}):ordens;
   function chooseFile() { inputRef.current?.click(); }
   function fileSelected(file?: File) {
     if (file) { setFileName(file.name); setModal("import"); }
@@ -29,11 +47,12 @@ export default function Home() {
           <a href="#maquinas"><span>⚙</span>Máquinas</a>
           <a href="#operadores"><span>♙</span>Operadores</a>
         </nav>
-        <div className="sidebar-bottom"><a href="#config"><span>⚙</span>Configurações</a><div className="user"><span className="avatar">AS</span><span><b>André Souza</b><small>PCP</small></span><button aria-label="Abrir menu">⋮</button></div></div>
+        <div className="sidebar-bottom"><a href="#config"><span>⚙</span>Configurações</a><div className="user"><span className="avatar">PC</span><span><b>{session.user.email?.split("@")[0]}</b><small>Conectado</small></span><button aria-label="Sair" onClick={()=>{saveSession(null);setSession(null)}}>↪</button></div></div>
       </aside>
 
       <section className="workspace" id="painel">
         <header><div><p className="eyebrow">VISÃO GERAL</p><h1>Bom dia, André</h1><p>Acompanhe o andamento da produção em tempo real.</p></div><div className="header-actions"><button className="scan" onClick={() => setModal("scan")}>⌗ <span>Escanear QR Code</span></button><button className="primary" onClick={chooseFile}>＋ Nova OP</button><input ref={inputRef} type="file" accept="application/pdf" hidden onChange={(e) => fileSelected(e.target.files?.[0])}/></div></header>
+        <div className="live-status"><span>●</span> Banco conectado · {liveOrders.length} OP{liveOrders.length===1?"":"s"} cadastrada{liveOrders.length===1?"":"s"}</div>
         {notice && <div className="notice" role="status"><span>✓</span>{notice}<button onClick={() => setNotice("")} aria-label="Fechar aviso">×</button></div>}
 
         <div className="metrics">
@@ -46,7 +65,7 @@ export default function Home() {
         <section className="panel" id="ordens">
           <div className="panel-title"><div><h2>Ordens de produção ativas</h2><p>Acompanhamento das operações em andamento</p></div><a href="#todas">Ver todas as OPs →</a></div>
           <div className="table-wrap"><table><thead><tr><th>ORDEM / ARTIGO</th><th>PROGRESSO</th><th>OPERAÇÃO ATUAL</th><th>MÁQUINA</th><th>OPERADOR</th><th>INÍCIO</th><th></th></tr></thead><tbody>
-            {ordens.map((op) => <tr key={op.numero}><td><div className="op-number"><b>OP {op.numero}</b><span className={`badge ${op.tom}`}>{op.status}</span></div><strong className="article">{op.artigo}</strong><small>{op.cliente}</small></td><td><div className="progress-label"><b>{op.progresso}%</b><span>{op.progresso === 0 ? "0 de 4 etapas" : op.progresso === 50 ? "2 de 4 etapas" : "4 de 5 etapas"}</span></div><div className="progress"><i style={{width:`${op.progresso}%`}} /></div></td><td><span className={`step-dot ${op.progresso === 0 ? "pending" : ""}`}></span><b>{op.etapa}</b></td><td>{op.maquina}</td><td>{op.operador}</td><td>{op.inicio}</td><td><button className="more">⋮</button></td></tr>)}
+            {displayedOrders.map((op) => <tr key={op.numero}><td><div className="op-number"><b>OP {op.numero}</b><span className={`badge ${op.tom}`}>{op.status}</span></div><strong className="article">{op.artigo}</strong><small>{op.cliente}</small></td><td><div className="progress-label"><b>{op.progresso}%</b><span>{op.progresso}% concluído</span></div><div className="progress"><i style={{width:`${op.progresso}%`}} /></div></td><td><span className={`step-dot ${op.progresso === 0 ? "pending" : ""}`}></span><b>{op.etapa}</b></td><td>{op.maquina}</td><td>{op.operador}</td><td>{op.inicio}</td><td><button className="more">⋮</button></td></tr>)}
           </tbody></table></div>
         </section>
 
