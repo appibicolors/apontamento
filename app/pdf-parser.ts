@@ -5,7 +5,8 @@ const clean=(value:string)=>value.replace(/\s+/g," ").trim();
 
 export async function parseProductionOrders(file:File):Promise<ParsedOrder[]>{
   const pdfjs=await import("pdfjs-dist/legacy/build/pdf.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc=new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs",import.meta.url).toString();
+  const bundledWorkerPath=new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs",import.meta.url).pathname;
+  pdfjs.GlobalWorkerOptions.workerSrc=new URL(bundledWorkerPath,window.location.origin).href;
   const document=await pdfjs.getDocument({data:await file.arrayBuffer()}).promise;
   const found=new Map<string,ParsedOrder>();
   for(let pageNumber=1;pageNumber<=document.numPages;pageNumber++){
