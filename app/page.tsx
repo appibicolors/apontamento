@@ -7,13 +7,14 @@ import { PointingScreen } from "./pointing-screen";
 import { ManagementScreen } from "./management-screen";
 import { HistoryScreen } from "./history-screen";
 import { downloadOrderQr } from "./qr-label";
+import { AdminScreen } from "./admin-screen";
 
 const ordens: Array<{numero:string;artigo:string;cliente:string;progresso:number;status:string;etapa:string;maquina:string;operador:string;inicio:string;tom:string}>=[];
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
-  const [modal, setModal] = useState<"import" | "pointing" | "machines" | "operators" | "history" | null>(null);
+  const [modal, setModal] = useState<"import" | "pointing" | "machines" | "operators" | "history" | "admin" | null>(null);
   const [fileName, setFileName] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [liveOrders, setLiveOrders] = useState<Ordem[]>([]);
@@ -39,6 +40,7 @@ export default function Home() {
   const activeSession=session;
   const displayedOrders=liveOrders.length?liveOrders.map(op=>{const operations=[...(op.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia);const finished=operations.filter(x=>x.status==="finalizada").length;const current=operations.find(x=>x.status==="em_andamento")??operations.find(x=>x.status!=="finalizada");const progress=operations.length?Math.round(finished/operations.length*100):0;return{numero:op.numero_op,artigo:op.artigo,cliente:op.cliente,progresso:progress,status:op.status==="em_producao"?"Em produção":op.status==="finalizada"?"Finalizada":"Aguardando",etapa:current?.descricao??"Fluxo não cadastrado",maquina:"—",operador:"—",inicio:"—",tom:op.status==="em_producao"?"blue":"amber"};}):ordens;
   const userName=profiles.find(profile=>profile.id===session.user.id)?.nome??session.user.email?.split("@")[0]??"Usuário";
+  const isAdmin=profiles.find(profile=>profile.id===session.user.id)?.perfil==="admin";
   const producingCount=liveOrders.filter(order=>order.status==="em_producao").length;
   const waitingCount=liveOrders.filter(order=>order.status==="aguardando").length;
   const finishedCount=liveOrders.filter(order=>order.status==="finalizada").length;
@@ -58,6 +60,7 @@ export default function Home() {
           <a href="#maquinas" onClick={event=>{event.preventDefault();setModal("machines")}}><span>⚙</span>Máquinas</a>
           <a href="#operadores" onClick={event=>{event.preventDefault();setModal("operators")}}><span>♙</span>Operadores</a>
           <a href="#historico" onClick={event=>{event.preventDefault();setModal("history")}}><span>◷</span>Histórico</a>
+          {isAdmin&&<a href="#admin" onClick={event=>{event.preventDefault();setModal("admin")}}><span>⌘</span>Administração</a>}
         </nav>
         <div className="sidebar-bottom"><a href="#config"><span>⚙</span>Configurações</a><div className="user"><span className="avatar">PC</span><span><b>{session.user.email?.split("@")[0]}</b><small>Conectado</small></span><button aria-label="Sair" onClick={()=>{saveSession(null);setSession(null)}}>↪</button></div></div>
       </aside>
@@ -86,7 +89,7 @@ export default function Home() {
           <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Consulte os apontamentos realizados</p></div><button className="more" onClick={()=>setModal("history")}>Abrir histórico →</button></div><div className="pointing-empty compact">Os registros reais aparecerão no Histórico.</div></section>
         </div>
       </section>
-      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="history"?<div role="dialog" onMouseDown={e=>e.stopPropagation()}><HistoryScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setModal(null)}/></div>:modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
+      {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="admin"&&isAdmin?<div role="dialog" aria-modal="true" aria-label="Administração" onMouseDown={e=>e.stopPropagation()}><AdminScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [orders,people,equipment]=await Promise.all([loadOrders(session.access_token),loadProfiles(session.access_token),loadMachines(session.access_token)]);setLiveOrders(orders);setProfiles(people);setMachines(equipment)}}/></div>:modal==="history"?<div role="dialog" onMouseDown={e=>e.stopPropagation()}><HistoryScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setModal(null)}/></div>:modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setModal(null)} aria-label="Fechar">×</button>
         <>
           {importing&&!parsedOrders.length?<div className="reading-state"><span></span><h2>Lendo ordem de produção…</h2><p>Extraindo dados e fluxo do documento.</p></div>:<>
