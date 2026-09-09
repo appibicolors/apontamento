@@ -6,7 +6,7 @@ type Props={orders:Ordem[];profiles:Perfil[];machines:Maquina[];token:string;use
 const norm=(v:string)=>v.trim().toLocaleUpperCase("pt-BR");
 export function PointingScreen({orders,profiles,machines,token,userId,onRefresh,onClose}:Props){
  const [number,setNumber]=useState("");const [operationCode,setOperationCode]=useState("");const [operatorCode,setOperatorCode]=useState(profiles.find(p=>p.id===userId)?.nome??"");const [machineCode,setMachineCode]=useState("");const [note,setNote]=useState("");const [busy,setBusy]=useState(false);const [message,setMessage]=useState("");
- const order=useMemo(()=>orders.find(o=>o.numero_op===parseOpScan(number)),[orders,number]);
+ const order=useMemo(()=>{const found=orders.find(o=>o.numero_op===parseOpScan(number));return found?{...found,artigo:`${found.codigo_artigo||"SEM CÓDIGO"} - ${found.artigo}`}:found},[orders,number]);
  const operations=useMemo(()=>[...(order?.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia),[order]);
  const selected=operations.find(o=>o.codigo.padStart(4,"0")===parseOperationScan(operationCode));
  const openPoint=selected?.apontamentos?.find(a=>!a.termino_em);

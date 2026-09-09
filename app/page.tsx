@@ -8,6 +8,7 @@ import { ManagementScreen } from "./management-screen";
 import { HistoryScreen } from "./history-screen";
 import { downloadOrderQr } from "./qr-label";
 import { AdminScreen } from "./admin-screen";
+import { ArticleLabel } from "./article-label";
 
 const ordens: Array<{numero:string;artigo:string;cliente:string;progresso:number;status:string;etapa:string;maquina:string;operador:string;inicio:string;tom:string}>=[];
 
@@ -80,7 +81,7 @@ export default function Home() {
         <section className="panel" id="ordens">
           <div className="panel-title"><div><h2>Ordens de produção ativas</h2><p>Acompanhamento das operações em andamento</p></div><a href="#todas">Ver todas as OPs →</a></div>
           <div className="table-wrap"><table><thead><tr><th>ORDEM / ARTIGO</th><th>PROGRESSO</th><th>OPERAÇÃO ATUAL</th><th>MÁQUINA</th><th>OPERADOR</th><th>INÍCIO</th><th></th></tr></thead><tbody>
-            {displayedOrders.map((op) => <tr key={op.numero}><td><div className="op-number"><b>OP {op.numero}</b><span className={`badge ${op.tom}`}>{op.status}</span></div><strong className="article">{op.artigo}</strong><small>{op.cliente}</small></td><td><div className="progress-label"><b>{op.progresso}%</b><span>{op.progresso}% concluído</span></div><div className="progress"><i style={{width:`${op.progresso}%`}} /></div></td><td><span className={`step-dot ${op.progresso === 0 ? "pending" : ""}`}></span><b>{op.etapa}</b></td><td>{op.maquina}</td><td>{op.operador}</td><td>{op.inicio}</td><td><button className="more">⋮</button></td></tr>)}
+            {displayedOrders.map((op) => <tr key={op.numero}><td><div className="op-number"><b>OP {op.numero}</b><span className={`badge ${op.tom}`}>{op.status}</span></div><ArticleLabel className="article" code={liveOrders.find(order=>order.numero_op===op.numero)?.codigo_artigo} name={op.artigo}/><small>{op.cliente}</small></td><td><div className="progress-label"><b>{op.progresso}%</b><span>{op.progresso}% concluído</span></div><div className="progress"><i style={{width:`${op.progresso}%`}} /></div></td><td><span className={`step-dot ${op.progresso === 0 ? "pending" : ""}`}></span><b>{op.etapa}</b></td><td>{op.maquina}</td><td>{op.operador}</td><td>{op.inicio}</td><td><button className="more">⋮</button></td></tr>)}
           </tbody></table></div>
         </section>
 
@@ -97,6 +98,7 @@ export default function Home() {
             <p className="eyebrow">{parseError?"FALHA NA LEITURA":"CONFIRA ANTES DE GRAVAR"}</p>
             <h2>{parseError?"Não foi possível processar o PDF":`${parsedOrders.length} ${parsedOrders.length===1?"ordem encontrada":"ordens encontradas"}`}</h2>
             <p className="modal-copy">{parseError||`${fileName} foi lido no dispositivo. Corrija qualquer informação, se necessário.`}</p>
+            <div className="article-preview">{parsedOrders.map(order=><div key={order.numero_op}><small>OP {order.numero_op}</small><ArticleLabel code={order.codigo_artigo} name={order.artigo}/></div>)}</div>
             <div className="order-review">{parsedOrders.map((order,index)=><article key={order.numero_op}><div className="review-head"><b>OP {order.numero_op}</b><em>{order.operacoes.length} operações</em></div><div className="review-grid"><label>Cliente<input value={order.cliente} onChange={e=>updateOrder(index,"cliente",e.target.value)}/></label><label>NF entrada<input value={order.nf_entrada} onChange={e=>updateOrder(index,"nf_entrada",e.target.value)}/></label><label>Data OP<input type="date" value={order.data_op} onChange={e=>updateOrder(index,"data_op",e.target.value)}/></label><label className="wide">Artigo<input value={order.artigo} onChange={e=>updateOrder(index,"artigo",e.target.value)}/></label><label>Peças<input type="number" value={order.pecas} onChange={e=>updateOrder(index,"pecas",Number(e.target.value))}/></label><label>Metros<input type="number" step="0.01" value={order.metros} onChange={e=>updateOrder(index,"metros",Number(e.target.value))}/></label><label>Peso<input type="number" step="0.001" value={order.peso} onChange={e=>updateOrder(index,"peso",Number(e.target.value))}/></label></div><ol>{order.operacoes.map(operation=><li key={operation.codigo}><code>{operation.codigo}</code>{operation.descricao}</li>)}</ol></article>)}</div>
             <div className="modal-actions"><button onClick={()=>setModal(null)}>Cancelar</button>{parsedOrders.map(order=><button key={order.numero_op} className="qr-download" onClick={()=>downloadOrderQr(order.numero_op,userName).catch(error=>setParseError(error instanceof Error?error.message:"Falha ao gerar QR."))}>⌗ QR OP {order.numero_op}</button>)}<button className="primary" disabled={importing||!parsedOrders.length} onClick={publishOrders}>{importing?"Gravando…":"Confirmar e gravar"}</button></div>
           </>}
