@@ -3,7 +3,22 @@ export type ParsedOrder={numero_op:string;cliente:string;nf_entrada:string;data_
 type PositionedText={str:string;transform:ArrayLike<number>};
 const clean=(value:string)=>value.replace(/\s+/g," ").trim();
 const searchable=(value:string)=>clean(value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Z0-9\s]/gi," ")).toUpperCase();
-const numberBR=(value:string)=>Number(value.replace(/\./g,"").replace(",","."));
+const numberBR=(value:string)=>{const result=Number(value.replace(/\./g,"").replace(",","."));return Number.isFinite(result)?result:0};
+export function parseArticleData(lines:string[],header:number){
+  if(header<0)return null;
+  const end=lines.findIndex((line,index)=>index>header&&searchable(line).startsWith("COMPOSICAO"));
+  const block=clean(lines.slice(header+1,end>header?end:header+4).join(" "));
+  const quantities=block.match(/\s+(\d+)\s+([\d.]+,\d{2,3})\s+([\d.]+,\d{2,3})$/);
+  if(!quantities)return null;
+  const identity=clean(block.slice(0,quantities.index));
+  const code=identity.match(/^([A-Z0-9]{6})\s+(.+)$/i);
+  if(!code)return null;
+  // The situation code is the last three-digit group before its description.
+  // Greedy matching is intentional: article names may themselves contain numbers (for example "180 FIOS").
+  const articleAndSituation=code[2].match(/^(.+)(\d{3})\s+(.+)$/);
+  if(!articleAndSituation)return null;
+  return{codigo:code[1].toUpperCase(),artigo:clean(articleAndSituation[1]),pecas:Number(quantities[1]),metros:numberBR(quantities[2]),peso:numberBR(quantities[3])};
+}
 function visualLines(items:PositionedText[]){
   const rows:Array<{y:number;parts:Array<{x:number;text:string}>}>=[];
   for(const item of items){if(!item.str.trim())continue;const x=Number(item.transform[4]),y=Number(item.transform[5]);let row=rows.find(candidate=>Math.abs(candidate.y-y)<1.5);if(!row){row={y,parts:[]};rows.push(row)}row.parts.push({x,text:item.str})}
@@ -26,9 +41,8 @@ export async function parseProductionOrders(file:File):Promise<ParsedOrder[]>{
       const headerRows=lines.slice(clientHeader+1,articleHeader>clientHeader?articleHeader:clientHeader+4);
       const client=headerRows.find(line=>!/^\d+\s+\d{2}\/\d{2}\/\d{4}$/.test(line))??"";
       const nfMatch=headerRows.find(line=>/^\d+\s+\d{2}\/\d{2}\/\d{4}$/.test(line))?.match(/^(\d+)\s+(\d{2})\/(\d{2})\/(\d{4})$/);
-      const articleLine=articleHeader>=0?clean(`${lines[articleHeader+1]??""} ${lines[articleHeader+2]??""}`):"";
-      const article=articleLine.match(/^(\d{6})\s+(.+?)\s+\d{3}\s+TINTO\s+(\d+)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})$/i);
-      order={numero_op:numero,cliente:client,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",codigo_artigo:article?.[1]??"",artigo:article?.[2]??"",pecas:Number(article?.[3]??0),metros:numberBR(article?.[4]??"0"),peso:numberBR(article?.[5]??"0"),operacoes:[]};found.set(numero,order);
+      const article=parseArticleData(lines,articleHeader);
+      order={numero_op:numero,cliente:client,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",codigo_artigo:article?.codigo??"",artigo:article?.artigo??"",pecas:article?.pecas??0,metros:article?.metros??0,peso:article?.peso??0,operacoes:[]};found.set(numero,order);
     }
     const start=lines.findIndex(line=>searchable(line).includes("DATA INIC")&&searchable(line).includes("OPERADOR"));
     const end=lines.findIndex((line,index)=>index>start&&searchable(line).startsWith("PROCESSO "));
