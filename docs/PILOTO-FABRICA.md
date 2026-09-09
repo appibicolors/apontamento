@@ -14,8 +14,18 @@ A chave presente no navegador é a chave publicável do Supabase. Nunca coloque 
 No SQL Editor do Supabase, execute nesta ordem:
 
 1. `supabase/005_modo_piloto_operacao_livre.sql`
-2. confira os operadores e máquinas que serão preservados;
-3. `supabase/006_limpar_dados_para_inicio_fabrica.sql` imediatamente antes do início oficial.
+2. `supabase/007_administracao.sql`
+3. `supabase/008_apontamento_agrupado.sql`
+4. confira os operadores e máquinas que serão preservados;
+5. `supabase/006_limpar_dados_para_inicio_fabrica.sql` somente imediatamente antes de um novo início oficial. Não execute a limpeza durante a operação da fábrica.
+
+## Apontamento agrupado
+
+- Ative **OPs agrupadas**, leia ao menos duas OPs e escolha uma operação disponível em todas elas.
+- O critério padrão é metros; peso ou peças podem ser escolhidos quando representarem melhor o esforço produtivo.
+- O sistema guarda o início e o fim reais do grupo e cria um apontamento individual para cada OP.
+- Ao finalizar, o tempo total é rateado pelas quantidades informadas. O ajuste de arredondamento garante que a soma dos tempos individuais seja exatamente igual ao tempo do grupo.
+- Se a tela for fechada, o grupo em andamento é recuperado ao reabrir o modo agrupado.
 
 ## Publicar no GitHub Pages
 
