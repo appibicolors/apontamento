@@ -58,12 +58,12 @@ export default function Home() {
           <a className="active" href="#painel"><span>▦</span>Painel</a>
           <a href="#ordens"><span>▤</span>Ordens de produção</a>
           <a href="#apontamento" onClick={event=>{event.preventDefault();setModal("pointing")}}><span>◎</span>Apontamento</a>
-          <a href="#maquinas" onClick={event=>{event.preventDefault();setModal("machines")}}><span>⚙</span>Máquinas</a>
-          <a href="#operadores" onClick={event=>{event.preventDefault();setModal("operators")}}><span>♙</span>Operadores</a>
+          {isAdmin&&<a href="#maquinas" onClick={event=>{event.preventDefault();setModal("machines")}}><span>⚙</span>Máquinas</a>}
+          {isAdmin&&<a href="#operadores" onClick={event=>{event.preventDefault();setModal("operators")}}><span>♙</span>Operadores</a>}
           <a href="#historico" onClick={event=>{event.preventDefault();setModal("history")}}><span>◷</span>Histórico</a>
           {isAdmin&&<a href="#admin" onClick={event=>{event.preventDefault();setModal("admin")}}><span>⌘</span>Administração</a>}
         </nav>
-        <div className="sidebar-bottom"><a href="#config"><span>⚙</span>Configurações</a><div className="user"><span className="avatar">PC</span><span><b>{session.user.email?.split("@")[0]}</b><small>Conectado</small></span><button aria-label="Sair" onClick={()=>{saveSession(null);setSession(null)}}>↪</button></div></div>
+        <div className="sidebar-bottom">{isAdmin&&<a href="#config"><span>⚙</span>Configurações</a>}<div className="user"><span className="avatar">PC</span><span><b>{session.user.email?.split("@")[0]}</b><small>{isAdmin?"Administrador":"Produção"}</small></span><button aria-label="Sair" onClick={()=>{saveSession(null);setSession(null)}}>↪</button></div></div>
       </aside>
 
       <section className="workspace" id="painel">

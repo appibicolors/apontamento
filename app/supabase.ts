@@ -30,6 +30,7 @@ export const adminDeleteOrder=(token:string,id:string)=>adminRpc(token,"admin_ex
 export const adminUpdatePoint=(token:string,data:{id:string;operatorId:string;machineId:string;start:string;end:string|null;note:string})=>adminRpc(token,"admin_editar_apontamento",{p_id:data.id,p_operador_id:data.operatorId,p_maquina_id:data.machineId,p_inicio_em:data.start,p_termino_em:data.end,p_observacao:data.note||null});
 export const adminDeletePoint=(token:string,id:string)=>adminRpc(token,"admin_excluir_apontamento",{p_id:id});
 export const adminUpdateOperator=(token:string,id:string,name:string)=>adminRpc(token,"admin_editar_operador",{p_id:id,p_nome:name});
+export const adminUpdateUser=(token:string,id:string,name:string,profile:"admin"|"operador")=>adminRpc(token,"admin_editar_usuario",{p_id:id,p_nome:name,p_perfil:profile});
 export const adminDeactivateOperator=(token:string,id:string)=>adminRpc(token,"admin_desativar_operador",{p_id:id});
 export const adminDeactivateMachine=(token:string,id:string)=>adminRpc(token,"admin_desativar_maquina",{p_id:id});
 export async function createOperator(data:{nome:string;email:string;password:string}){const response=await supabaseFetch("/auth/v1/signup",{method:"POST",body:JSON.stringify({email:data.email.trim().toLowerCase(),password:data.password,data:{nome:data.nome.trim(),perfil:"operador"}})});const result=await response.json();if(result.user&&Array.isArray(result.user.identities)&&result.user.identities.length===0)throw new Error("Este e-mail já possui cadastro. Use outro endereço para o operador.")}

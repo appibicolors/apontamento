@@ -16,8 +16,16 @@ No SQL Editor do Supabase, execute nesta ordem:
 1. `supabase/005_modo_piloto_operacao_livre.sql`
 2. `supabase/007_administracao.sql`
 3. `supabase/008_apontamento_agrupado.sql`
-4. confira os operadores e máquinas que serão preservados;
-5. `supabase/006_limpar_dados_para_inicio_fabrica.sql` somente imediatamente antes de um novo início oficial. Não execute a limpeza durante a operação da fábrica.
+4. `supabase/009_niveis_acesso.sql`
+5. confira os operadores e máquinas que serão preservados;
+6. `supabase/006_limpar_dados_para_inicio_fabrica.sql` somente imediatamente antes de um novo início oficial. Não execute a limpeza durante a operação da fábrica.
+
+## Níveis de acesso
+
+- **Administrador:** vê Administração, Máquinas, Operadores e Configurações.
+- **Produção:** vê somente as áreas operacionais necessárias ao apontamento.
+- O administrador altera o nível em **Administração → Usuários → Editar → Nível de acesso**.
+- A conta `app.ibicolors@gmail.com` é protegida como administradora principal.
 
 ## Apontamento agrupado
 
