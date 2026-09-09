@@ -1,5 +1,5 @@
 export type ParsedOperation={codigo:string;descricao:string};
-export type ParsedOrder={numero_op:string;cliente:string;nf_entrada:string;data_op:string;codigo_artigo:string;artigo:string;pecas:number;metros:number;peso:number;operacoes:ParsedOperation[]};
+export type ParsedOrder={numero_op:string;cliente:string;nf_entrada:string;data_op:string;prazo_dias:number|null;codigo_artigo:string;artigo:string;pecas:number;metros:number;peso:number;operacoes:ParsedOperation[]};
 type PositionedText={str:string;transform:ArrayLike<number>};
 const clean=(value:string)=>value.replace(/\s+/g," ").trim();
 const searchable=(value:string)=>clean(value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Z0-9\s]/gi," ")).toUpperCase();
@@ -42,7 +42,7 @@ export async function parseProductionOrders(file:File):Promise<ParsedOrder[]>{
       const client=headerRows.find(line=>!/^\d+\s+\d{2}\/\d{2}\/\d{4}$/.test(line))??"";
       const nfMatch=headerRows.find(line=>/^\d+\s+\d{2}\/\d{2}\/\d{4}$/.test(line))?.match(/^(\d+)\s+(\d{2})\/(\d{2})\/(\d{4})$/);
       const article=parseArticleData(lines,articleHeader);
-      order={numero_op:numero,cliente:client,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",codigo_artigo:article?.codigo??"",artigo:article?.artigo??"",pecas:article?.pecas??0,metros:article?.metros??0,peso:article?.peso??0,operacoes:[]};found.set(numero,order);
+      order={numero_op:numero,cliente:client,nf_entrada:nfMatch?.[1]??"",data_op:nfMatch?`${nfMatch[4]}-${nfMatch[3]}-${nfMatch[2]}`:"",prazo_dias:null,codigo_artigo:article?.codigo??"",artigo:article?.artigo??"",pecas:article?.pecas??0,metros:article?.metros??0,peso:article?.peso??0,operacoes:[]};found.set(numero,order);
     }
     const start=lines.findIndex(line=>searchable(line).includes("DATA INIC")&&searchable(line).includes("OPERADOR"));
     const end=lines.findIndex((line,index)=>index>start&&searchable(line).startsWith("PROCESSO "));

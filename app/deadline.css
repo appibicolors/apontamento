@@ -1,0 +1,8 @@
+.deadline-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;white-space:nowrap;background:#edf2f7;color:#647187}
+.deadline-badge.on_time{background:#e8f8ef;color:#147c45}.deadline-badge.near,.deadline-badge.today{background:#fff2d5;color:#9a650f}.deadline-badge.overdue{background:#ffebe9;color:#b93930}.deadline-badge.no_deadline{background:#eef1f5;color:#6f7c8e}
+.orders-list>article.deadline-overdue{border-left-color:#d84c42}.orders-list>article.deadline-near,.orders-list>article.deadline-today{border-left-color:#dba039}
+.deadline-help{align-self:end;padding:0 4px 12px;color:#7c899a;font-size:10px}
+.review-grid input[readonly]{background:#f2f6fb;color:#315b87;font-weight:800}
+.orders-filters{grid-template-columns:2fr 1.05fr .95fr .95fr .75fr .75fr auto}
+@media(max-width:1050px){.orders-filters{grid-template-columns:2fr 1fr 1fr}}
+@media(max-width:650px){.orders-filters{grid-template-columns:1fr 1fr}}
