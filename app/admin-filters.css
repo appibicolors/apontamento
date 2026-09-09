@@ -1,0 +1,6 @@
+.admin-filters{display:grid;grid-template-columns:minmax(240px,2fr) repeat(3,minmax(130px,1fr));gap:10px;margin-bottom:14px;padding:13px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.admin-filters label{display:grid;gap:6px;color:#687890;font-size:10px;font-weight:800}
+.admin-filters input,.admin-filters select{width:100%;min-height:42px;border:1px solid #d5deea;border-radius:8px;padding:9px 11px;background:#fff;color:#23334b;font:inherit;outline:none}
+.admin-filters input:focus,.admin-filters select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #e5efff}
+@media(max-width:800px){.admin-filters{grid-template-columns:1fr 1fr}.admin-search{grid-column:1/-1}}
+@media(max-width:650px){.admin-filters{grid-template-columns:1fr}.admin-search{grid-column:auto}}
