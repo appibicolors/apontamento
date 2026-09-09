@@ -2,11 +2,12 @@
 import {useEffect,useState} from "react";
 import {Maquina,Ordem,Perfil} from "./supabase";
 import {formatDuration,formatSeconds} from "./duration";
+import {formatFactoryDateTime} from "./factory-time";
 import {ArticleLabel} from "./article-label";
 const reasonLabel:Record<string,string>={normal:"Execução concluída",pausa:"Pausa",fim_turno:"Fim do turno",retrabalho:"Retrabalho",parada_maquina:"Parada de máquina"};
 export function HistoryScreen({orders,profiles,machines,onClose}:{orders:Ordem[];profiles:Perfil[];machines:Maquina[];onClose:()=>void}){
  const [now,setNow]=useState(Date.now());useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer)},[]);
  const rows=orders.flatMap(order=>(order.operacoes??[]).flatMap(operation=>(operation.apontamentos??[]).map(point=>({order,operation,point})))).sort((a,b)=>b.point.inicio_em.localeCompare(a.point.inicio_em));
- const fmt=(value:string|null)=>value?new Date(value).toLocaleString("pt-BR"):"Em andamento";
+ const fmt=(value:string|null)=>formatFactoryDateTime(value,"Em andamento");
  return <section className="manage-screen history-screen"><header><div><p className="eyebrow">PRODUÇÃO</p><h2>Histórico de execuções</h2></div><button onClick={onClose}>×</button></header><div className="table-wrap"><table><thead><tr><th>OP / ARTIGO / OPERAÇÃO</th><th>OPERADOR</th><th>MÁQUINA</th><th>INÍCIO</th><th>TÉRMINO</th><th>TEMPO</th><th>TIPO / OBSERVAÇÃO</th></tr></thead><tbody>{rows.map(({order,operation,point})=><tr key={point.id}><td><b>OP {order.numero_op}</b>{point.grupo_id&&<span className="group-badge">AGRUPADO</span>}<br/><ArticleLabel code={order.codigo_artigo} name={order.artigo}/><br/>{operation.codigo} · {operation.descricao}{point.grupo_id&&<small className="allocation-detail">Rateio: {Number(point.quantidade_rateio).toLocaleString("pt-BR")} {point.criterio_rateio}</small>}</td><td>{profiles.find(profile=>profile.id===point.operador_id)?.nome??"—"}</td><td>{machines.find(machine=>machine.id===point.maquina_id)?.codigo??"—"}</td><td>{fmt(point.inicio_em)}</td><td>{fmt(point.termino_em)}</td><td><b className={point.termino_em?"duration":"duration running"}>{point.duracao_rateada_segundos!=null?formatSeconds(point.duracao_rateada_segundos):formatDuration(point.inicio_em,point.termino_em,now)}</b>{point.grupo_id&&point.termino_em&&<small className="allocation-detail">tempo proporcional</small>}</td><td><span className="execution-type">{point.termino_em?(reasonLabel[point.motivo_finalizacao??"normal"]??"Execução concluída"):"Em andamento"}</span><br/>{point.observacao||"—"}</td></tr>)}</tbody></table>{!rows.length&&<p className="pointing-empty">Nenhuma execução realizada.</p>}</div></section>
 }
