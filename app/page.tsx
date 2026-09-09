@@ -9,6 +9,7 @@ import { HistoryScreen } from "./history-screen";
 import { downloadOrderQr } from "./qr-label";
 import { AdminScreen } from "./admin-screen";
 import { ArticleLabel } from "./article-label";
+import { OrdersScreen } from "./orders-screen";
 
 const ordens: Array<{numero:string;artigo:string;cliente:string;progresso:number;status:string;etapa:string;maquina:string;operador:string;inicio:string;tom:string}>=[];
 
@@ -16,6 +17,7 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState<"import" | "pointing" | "machines" | "operators" | "history" | "admin" | null>(null);
+  const [ordersOpen,setOrdersOpen]=useState(false);
   const [fileName, setFileName] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [liveOrders, setLiveOrders] = useState<Ordem[]>([]);
@@ -56,7 +58,7 @@ export default function Home() {
         <div className="brand"><span className="brand-mark">IP</span><span><b>Ibirapuera</b><small>Produção</small></span></div>
         <nav aria-label="Navegação principal">
           <a className="active" href="#painel"><span>▦</span>Painel</a>
-          <a href="#ordens"><span>▤</span>Ordens de produção</a>
+          <a href="#ordens" onClick={event=>{event.preventDefault();setOrdersOpen(true)}}><span>▤</span>Ordens de produção</a>
           <a href="#apontamento" onClick={event=>{event.preventDefault();setModal("pointing")}}><span>◎</span>Apontamento</a>
           {isAdmin&&<a href="#maquinas" onClick={event=>{event.preventDefault();setModal("machines")}}><span>⚙</span>Máquinas</a>}
           {isAdmin&&<a href="#operadores" onClick={event=>{event.preventDefault();setModal("operators")}}><span>♙</span>Operadores</a>}
@@ -79,7 +81,7 @@ export default function Home() {
         </div>
 
         <section className="panel" id="ordens">
-          <div className="panel-title"><div><h2>Ordens de produção ativas</h2><p>Acompanhamento das operações em andamento</p></div><a href="#todas">Ver todas as OPs →</a></div>
+          <div className="panel-title"><div><h2>Ordens de produção ativas</h2><p>Acompanhamento das operações em andamento</p></div><a href="#todas" onClick={event=>{event.preventDefault();setOrdersOpen(true)}}>Ver todas as OPs →</a></div>
           <div className="table-wrap"><table><thead><tr><th>ORDEM / ARTIGO</th><th>PROGRESSO</th><th>OPERAÇÃO ATUAL</th><th>MÁQUINA</th><th>OPERADOR</th><th>INÍCIO</th><th></th></tr></thead><tbody>
             {displayedOrders.map((op) => <tr key={op.numero}><td><div className="op-number"><b>OP {op.numero}</b><span className={`badge ${op.tom}`}>{op.status}</span></div><ArticleLabel className="article" code={liveOrders.find(order=>order.numero_op===op.numero)?.codigo_artigo} name={op.artigo}/><small>{op.cliente}</small></td><td><div className="progress-label"><b>{op.progresso}%</b><span>{op.progresso}% concluído</span></div><div className="progress"><i style={{width:`${op.progresso}%`}} /></div></td><td><span className={`step-dot ${op.progresso === 0 ? "pending" : ""}`}></span><b>{op.etapa}</b></td><td>{op.maquina}</td><td>{op.operador}</td><td>{op.inicio}</td><td><button className="more">⋮</button></td></tr>)}
           </tbody></table></div>
@@ -90,6 +92,7 @@ export default function Home() {
           <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Consulte os apontamentos realizados</p></div><button className="more" onClick={()=>setModal("history")}>Abrir histórico →</button></div><div className="pointing-empty compact">Os registros reais aparecerão no Histórico.</div></section>
         </div>
       </section>
+      {ordersOpen&&<div className="modal-backdrop" role="presentation" onMouseDown={()=>setOrdersOpen(false)}><div role="dialog" aria-modal="true" aria-label="Ordens de produção" onMouseDown={event=>event.stopPropagation()}><OrdersScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setOrdersOpen(false)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div></div>}
       {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="admin"&&isAdmin?<div role="dialog" aria-modal="true" aria-label="Administração" onMouseDown={e=>e.stopPropagation()}><AdminScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [orders,people,equipment]=await Promise.all([loadOrders(session.access_token),loadProfiles(session.access_token),loadMachines(session.access_token)]);setLiveOrders(orders);setProfiles(people);setMachines(equipment)}}/></div>:modal==="history"?<div role="dialog" onMouseDown={e=>e.stopPropagation()}><HistoryScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setModal(null)}/></div>:modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setModal(null)} aria-label="Fechar">×</button>
         <>

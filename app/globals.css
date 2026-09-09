@@ -5,6 +5,7 @@
 @import "./admin.css";
 @import "./grouped-pointing.css";
 @import "./grouped-extras.css";
+@import "./orders-screen.css";
 .article-label{display:inline!important}.article-label>strong{font-weight:900;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;color:#102a4c}.article-label>span{font-weight:700;color:inherit}
 .article-preview{display:grid;gap:7px;margin:0 0 14px}.article-preview>div{display:flex;align-items:center;gap:10px;padding:9px 11px;background:#eef5ff;border-radius:8px}.article-preview small{color:#65758b;min-width:68px;font-weight:800}
 .article-label.article{display:block!important;margin:6px 0 9px}
