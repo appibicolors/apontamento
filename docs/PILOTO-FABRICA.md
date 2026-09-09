@@ -17,8 +17,17 @@ No SQL Editor do Supabase, execute nesta ordem:
 2. `supabase/007_administracao.sql`
 3. `supabase/008_apontamento_agrupado.sql`
 4. `supabase/009_niveis_acesso.sql`
-5. confira os operadores e máquinas que serão preservados;
-6. `supabase/006_limpar_dados_para_inicio_fabrica.sql` somente imediatamente antes de um novo início oficial. Não execute a limpeza durante a operação da fábrica.
+5. `supabase/010_multiplas_execucoes_e_encerramento.sql`
+6. confira os operadores e máquinas que serão preservados;
+7. `supabase/006_limpar_dados_para_inicio_fabrica.sql` somente imediatamente antes de um novo início oficial. Não execute a limpeza durante a operação da fábrica.
+
+## Execuções, pausas e retrabalho
+
+- Uma operação pode receber várias execuções, desde que não tenha outro apontamento aberto.
+- Finalizar uma execução não bloqueia a operação e não encerra automaticamente a OP.
+- O motivo informa execução normal, pausa, fim do turno, retrabalho ou parada de máquina.
+- Somente o administrador encerra ou reabre a OP em **Administração → OPs**; o motivo fica registrado para auditoria.
+- Uma OP encerrada não aceita apontamentos simples nem agrupados.
 
 ## Níveis de acesso
 
