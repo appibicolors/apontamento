@@ -6,12 +6,9 @@ import { parseProductionOrders, ParsedOrder } from "./pdf-parser";
 import { PointingScreen } from "./pointing-screen";
 import { ManagementScreen } from "./management-screen";
 import { HistoryScreen } from "./history-screen";
+import { downloadOrderQr } from "./qr-label";
 
-const ordens = [
-  { numero: "267649", artigo: "MAQUINETADO ALGODÃO POSITANO", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 50, status: "Em produção", etapa: "Jigger cores claras/médias", maquina: "JIGGER 02", operador: "João Silva", inicio: "08:42", tom: "blue" },
-  { numero: "267650", artigo: "SARJA FLANELADA 78 CM", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 0, status: "Aguardando", etapa: "Enrolar carrolão", maquina: "—", operador: "—", inicio: "—", tom: "amber" },
-  { numero: "267653", artigo: "COTTON SOFT LISTRADO 40/1", cliente: "IBIRAPUERA TÊXTIL LTDA", progresso: 80, status: "Em produção", etapa: "Secagem + acabamento", maquina: "RAMA 01", operador: "Marcos Lima", inicio: "10:16", tom: "blue" },
-];
+const ordens: Array<{numero:string;artigo:string;cliente:string;progresso:number;status:string;etapa:string;maquina:string;operador:string;inicio:string;tom:string}>=[];
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,12 +36,16 @@ export default function Home() {
   }
   if(!authReady)return <main className="login-shell"><p>Conectando ao ambiente Ibicolors…</p></main>;
   if(!session)return <main className="login-shell"><section className="login-card"><div className="brand login-brand"><span className="brand-mark">IP</span><span><b>Ibirapuera</b><small>Produção</small></span></div><p className="eyebrow">AMBIENTE DE TESTES</p><h1>Entrar no apontamento</h1><p>Use o usuário criado no Supabase para acessar a produção.</p><form onSubmit={handleLogin}><label>E-mail<input name="email" type="email" required autoComplete="email"/></label><label>Senha<input name="password" type="password" required autoComplete="current-password"/></label>{authError&&<p className="login-error" role="alert">{authError}</p>}<button className="primary" disabled={loading}>{loading?"Entrando…":"Entrar"}</button></form><small className="connection-ok">● Supabase configurado</small></section></main>;
+  const activeSession=session;
   const displayedOrders=liveOrders.length?liveOrders.map(op=>{const operations=[...(op.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia);const finished=operations.filter(x=>x.status==="finalizada").length;const current=operations.find(x=>x.status==="em_andamento")??operations.find(x=>x.status!=="finalizada");const progress=operations.length?Math.round(finished/operations.length*100):0;return{numero:op.numero_op,artigo:op.artigo,cliente:op.cliente,progresso:progress,status:op.status==="em_producao"?"Em produção":op.status==="finalizada"?"Finalizada":"Aguardando",etapa:current?.descricao??"Fluxo não cadastrado",maquina:"—",operador:"—",inicio:"—",tom:op.status==="em_producao"?"blue":"amber"};}):ordens;
   const userName=profiles.find(profile=>profile.id===session.user.id)?.nome??session.user.email?.split("@")[0]??"Usuário";
+  const producingCount=liveOrders.filter(order=>order.status==="em_producao").length;
+  const waitingCount=liveOrders.filter(order=>order.status==="aguardando").length;
+  const finishedCount=liveOrders.filter(order=>order.status==="finalizada").length;
   function chooseFile() { inputRef.current?.click(); }
   async function fileSelected(file?:File){if(!file)return;setFileName(file.name);setImporting(true);setModal("import");setParsedOrders([]);setParseError("");try{const parsed=await parseProductionOrders(file);setParsedOrders(parsed);if(!parsed.length)setParseError("O texto do documento foi lido, mas nenhuma OP foi reconhecida.")}catch(error){setParseError(error instanceof Error?error.message:"Falha desconhecida durante a leitura do PDF.")}finally{setImporting(false);if(inputRef.current)inputRef.current.value=""}}
   function updateOrder(index:number,field:keyof ParsedOrder,value:string|number){setParsedOrders(current=>current.map((order,i)=>i===index?{...order,[field]:value}:order))}
-  async function publishOrders(){if(!parsedOrders.length)return;setImporting(true);try{await saveOrders(parsedOrders,session);setLiveOrders(await loadOrders(session.access_token));setModal(null);const totalOperations=parsedOrders.reduce((total,order)=>total+order.operacoes.length,0);setParsedOrders([]);setNotice(`${parsedOrders.length} OP${parsedOrders.length===1?"":"s"} e ${totalOperations} operaç${totalOperations===1?"ão":"ões"} gravadas no Supabase e liberadas para apontamento.`)}catch(error){setNotice(error instanceof Error?`Erro ao gravar: ${error.message}`:"Não foi possível gravar as OPs.")}finally{setImporting(false)}}
+  async function publishOrders(){if(!parsedOrders.length)return;setImporting(true);try{await saveOrders(parsedOrders,activeSession);setLiveOrders(await loadOrders(activeSession.access_token));setModal(null);const totalOperations=parsedOrders.reduce((total,order)=>total+order.operacoes.length,0);setParsedOrders([]);setNotice(`${parsedOrders.length} OP${parsedOrders.length===1?"":"s"} e ${totalOperations} operaç${totalOperations===1?"ão":"ões"} gravadas no Supabase e liberadas para apontamento.`)}catch(error){setNotice(error instanceof Error?`Erro ao gravar: ${error.message}`:"Não foi possível gravar as OPs.")}finally{setImporting(false)}}
 
   return (
     <main className="app-shell">
@@ -67,10 +68,10 @@ export default function Home() {
         {notice && <div className="notice" role="status"><span>✓</span>{notice}<button onClick={() => setNotice("")} aria-label="Fechar aviso">×</button></div>}
 
         <div className="metrics">
-          <article><span className="metric-icon blue">▤</span><div><small>OPs em produção</small><strong>8</strong><em>↑ 2 hoje</em></div></article>
-          <article><span className="metric-icon amber">◷</span><div><small>Aguardando início</small><strong>3</strong><em className="muted">Próxima: OP 267650</em></div></article>
-          <article><span className="metric-icon green">✓</span><div><small>Finalizadas hoje</small><strong>12</strong><em>↑ 20% vs. ontem</em></div></article>
-          <article><span className="metric-icon red">!</span><div><small>Com atenção</small><strong>2</strong><em className="alert">Verificar agora</em></div></article>
+          <article><span className="metric-icon blue">▤</span><div><small>OPs em produção</small><strong>{producingCount}</strong><em>Dados em tempo real</em></div></article>
+          <article><span className="metric-icon amber">◷</span><div><small>Aguardando início</small><strong>{waitingCount}</strong><em className="muted">Prontas para apontar</em></div></article>
+          <article><span className="metric-icon green">✓</span><div><small>OPs finalizadas</small><strong>{finishedCount}</strong><em>Histórico preservado</em></div></article>
+          <article><span className="metric-icon red">!</span><div><small>Com atenção</small><strong>0</strong><em className="muted">Sem alertas</em></div></article>
         </div>
 
         <section className="panel" id="ordens">
@@ -82,7 +83,7 @@ export default function Home() {
 
         <div className="bottom-grid">
           <section className="upload-card"><div className="upload-icon">⇧</div><div><h2>Importar nova ordem de produção</h2><p>Envie o PDF da OP. Os dados e o fluxo serão identificados automaticamente.</p><button onClick={chooseFile}>Selecionar PDF</button><small>PDF de até 20 MB</small></div></section>
-          <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Últimos apontamentos realizados</p></div><a href="#historico">Ver histórico</a></div><ul><li><span className="activity-icon green">✓</span><p><b>OP 267648 finalizada</b><small>Revisão concluída por Carlos Mendes</small></p><time>há 12 min</time></li><li><span className="activity-icon blue">▶</span><p><b>Operação iniciada</b><small>OP 267653 · Secagem + acabamento</small></p><time>há 35 min</time></li><li><span className="activity-icon amber">!</span><p><b>Parada registrada</b><small>RAMA 02 · Manutenção preventiva</small></p><time>há 1h</time></li></ul></section>
+          <section className="activity"><div className="panel-title"><div><h2>Atividade recente</h2><p>Consulte os apontamentos realizados</p></div><button className="more" onClick={()=>setModal("history")}>Abrir histórico →</button></div><div className="pointing-empty compact">Os registros reais aparecerão no Histórico.</div></section>
         </div>
       </section>
       {modal && <div className="modal-backdrop" role="presentation" onMouseDown={() => setModal(null)}>{modal==="history"?<div role="dialog" onMouseDown={e=>e.stopPropagation()}><HistoryScreen orders={liveOrders} profiles={profiles} machines={machines} onClose={()=>setModal(null)}/></div>:modal==="pointing"?<div role="dialog" aria-modal="true" aria-label="Apontamento de produção" onMouseDown={e=>e.stopPropagation()}><PointingScreen orders={liveOrders} profiles={profiles} machines={machines} token={session.access_token} userId={session.user.id} onClose={()=>setModal(null)} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))}/></div>:modal==="machines"||modal==="operators"?<div role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><ManagementScreen kind={modal} machines={machines} profiles={profiles} token={session.access_token} onClose={()=>setModal(null)} onRefresh={async()=>{const [people,equipment]=await Promise.all([loadProfiles(session.access_token),loadMachines(session.access_token)]);setProfiles(people);setMachines(equipment)}}/></div>:<section className="modal" role="dialog" aria-modal="true" aria-label="Importar ordem de produção" onMouseDown={(e) => e.stopPropagation()}>
@@ -94,7 +95,7 @@ export default function Home() {
             <h2>{parseError?"Não foi possível processar o PDF":`${parsedOrders.length} ${parsedOrders.length===1?"ordem encontrada":"ordens encontradas"}`}</h2>
             <p className="modal-copy">{parseError||`${fileName} foi lido no dispositivo. Corrija qualquer informação, se necessário.`}</p>
             <div className="order-review">{parsedOrders.map((order,index)=><article key={order.numero_op}><div className="review-head"><b>OP {order.numero_op}</b><em>{order.operacoes.length} operações</em></div><div className="review-grid"><label>Cliente<input value={order.cliente} onChange={e=>updateOrder(index,"cliente",e.target.value)}/></label><label>NF entrada<input value={order.nf_entrada} onChange={e=>updateOrder(index,"nf_entrada",e.target.value)}/></label><label>Data OP<input type="date" value={order.data_op} onChange={e=>updateOrder(index,"data_op",e.target.value)}/></label><label className="wide">Artigo<input value={order.artigo} onChange={e=>updateOrder(index,"artigo",e.target.value)}/></label><label>Peças<input type="number" value={order.pecas} onChange={e=>updateOrder(index,"pecas",Number(e.target.value))}/></label><label>Metros<input type="number" step="0.01" value={order.metros} onChange={e=>updateOrder(index,"metros",Number(e.target.value))}/></label><label>Peso<input type="number" step="0.001" value={order.peso} onChange={e=>updateOrder(index,"peso",Number(e.target.value))}/></label></div><ol>{order.operacoes.map(operation=><li key={operation.codigo}><code>{operation.codigo}</code>{operation.descricao}</li>)}</ol></article>)}</div>
-            <div className="modal-actions"><button onClick={()=>setModal(null)}>Cancelar</button><button className="primary" disabled={importing||!parsedOrders.length} onClick={publishOrders}>{importing?"Gravando…":"Confirmar e gravar"}</button></div>
+            <div className="modal-actions"><button onClick={()=>setModal(null)}>Cancelar</button>{parsedOrders.map(order=><button key={order.numero_op} className="qr-download" onClick={()=>downloadOrderQr(order.numero_op,userName).catch(error=>setParseError(error instanceof Error?error.message:"Falha ao gerar QR."))}>⌗ QR OP {order.numero_op}</button>)}<button className="primary" disabled={importing||!parsedOrders.length} onClick={publishOrders}>{importing?"Gravando…":"Confirmar e gravar"}</button></div>
           </>}
         </>
       </section>}</div>}
