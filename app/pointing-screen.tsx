@@ -6,10 +6,10 @@ import {parseOperationScan,parseOpScan} from "./scanner";
 import {ArticleLabel} from "./article-label";
 import {GroupedPointing} from "./grouped-pointing";
 import {FINISH_REASONS} from "./finish-reasons";
-type Props={orders:Ordem[];profiles:Perfil[];machines:Maquina[];token:string;userId:string;onRefresh:()=>Promise<void>;onClose:()=>void};
+type Props={orders:Ordem[];profiles:Perfil[];machines:Maquina[];token:string;userId:string;onRefresh:()=>Promise<void>;onClose:()=>void;initialGrouped?:boolean};
 const norm=(value:string)=>value.trim().toLocaleUpperCase("pt-BR");
-export function PointingScreen({orders,profiles,machines,token,userId,onRefresh,onClose}:Props){
- const [grouped,setGrouped]=useState(false),[number,setNumber]=useState(""),[operationCode,setOperationCode]=useState(""),[operatorCode,setOperatorCode]=useState(profiles.find(p=>p.id===userId)?.nome??""),[machineCode,setMachineCode]=useState(""),[note,setNote]=useState(""),[reason,setReason]=useState("normal"),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
+export function PointingScreen({orders,profiles,machines,token,userId,onRefresh,onClose,initialGrouped=false}:Props){
+ const [grouped,setGrouped]=useState(initialGrouped),[number,setNumber]=useState(""),[operationCode,setOperationCode]=useState(""),[operatorCode,setOperatorCode]=useState(profiles.find(p=>p.id===userId)?.nome??""),[machineCode,setMachineCode]=useState(""),[note,setNote]=useState(""),[reason,setReason]=useState("normal"),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const order=useMemo(()=>orders.find(item=>item.numero_op===parseOpScan(number)),[orders,number]);
  const operations=useMemo(()=>[...(order?.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia),[order]);
  const selected=operations.find(operation=>operation.codigo.padStart(4,"0")===parseOperationScan(operationCode));

@@ -1,2 +1,3 @@
 .pointing-fields input{display:block;width:100%;margin-top:6px;border:1px solid #d6dee9;border-radius:9px;padding:12px;font:inherit;background:#fff;color:#26364a}.edit-machine{margin-left:auto;border:1px solid #cdd9e9;background:#fff;color:#1764c0;border-radius:7px;padding:7px 9px;font-size:10px;font-weight:800;cursor:pointer}
 .history-screen{width:min(1250px,calc(100vw - 32px))}.history-screen table{min-width:1100px}.duration{font-variant-numeric:tabular-nums;color:#24364d}.duration.running{color:#16864a}
+.history-message{margin:0 24px 12px}.resume-group{display:block;margin-top:8px;padding:7px 10px;border:1px solid #9fc0ef;border-radius:8px;background:#eaf2ff;color:#175fbd;font-size:12px;font-weight:800;cursor:pointer}.resume-group:disabled{cursor:wait;opacity:.65}
