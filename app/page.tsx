@@ -12,6 +12,7 @@ import { ArticleLabel } from "./article-label";
 import { OrdersScreen } from "./orders-screen";
 import {addCalendarDays,deadlineStatus,formatDateOnly} from "./deadline";
 import {MachineDashboard} from "./machine-dashboard";
+import {ClientPortal} from "./client-portal";
 
 const ordens: Array<{numero:string;artigo:string;cliente:string;progresso:number;status:string;deadline:ReturnType<typeof deadlineStatus>;etapa:string;maquina:string;operador:string;inicio:string;tom:string}>=[];
 
@@ -46,7 +47,9 @@ export default function Home() {
   const activeSession=session;
   const displayedOrders=liveOrders.length?liveOrders.map(op=>{const operations=[...(op.operacoes??[])].sort((a,b)=>a.sequencia-b.sequencia);const covered=operations.filter(x=>x.apontamentos?.some(point=>point.termino_em)).length;const current=operations.find(x=>x.status==="em_andamento")??operations.find(x=>!x.apontamentos?.some(point=>point.termino_em))??operations.at(-1);const progress=operations.length?Math.round(covered/operations.length*100):0;const deadline=deadlineStatus(op);return{numero:op.numero_op,artigo:op.artigo,cliente:op.cliente,progresso:progress,status:op.encerrada_em?"Encerrada":op.status==="em_producao"?"Em produção":"Aguardando",deadline,etapa:current?.descricao??"Fluxo não cadastrado",maquina:"—",operador:"—",inicio:"—",tom:op.encerrada_em?"green":op.status==="em_producao"?"blue":"amber"};}):ordens;
   const userName=profiles.find(profile=>profile.id===session.user.id)?.nome??session.user.email?.split("@")[0]??"Usuário";
-  const isAdmin=profiles.find(profile=>profile.id===session.user.id)?.perfil==="admin";
+  const currentProfile=profiles.find(profile=>profile.id===session.user.id)?.perfil;
+  const isAdmin=currentProfile==="admin";
+  if(currentProfile==="consulta")return <ClientPortal orders={liveOrders} machines={machines} userName={userName} onRefresh={async()=>setLiveOrders(await loadOrders(session.access_token))} onLogout={()=>{saveSession(null);setSession(null)}}/>;
   const producingCount=liveOrders.filter(order=>order.status==="em_producao").length;
   const waitingCount=liveOrders.filter(order=>order.status==="aguardando").length;
   const finishedCount=liveOrders.filter(order=>order.status==="finalizada").length;
