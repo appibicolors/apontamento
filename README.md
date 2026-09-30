@@ -1,5 +1,9 @@
 # vinext-starter
 
+## Ibirapuera Produção
+
+Execute os scripts da pasta `supabase` em ordem numérica. Para habilitar a correção auditável de fluxos importados pelo leitor antigo, execute `015_correcao_fluxos_importados.sql` no SQL Editor do Supabase.
+
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
 Drizzle support.

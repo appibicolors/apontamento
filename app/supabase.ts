@@ -3,7 +3,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_pkEIuTOS4gUzbAzN7T4OZg_D
 export type Session = { access_token:string; refresh_token:string; expires_at?:number; user:{id:string;email?:string} };
 export type Apontamento={id:string;operador_id:string;maquina_id:string;inicio_em:string;termino_em:string|null;observacao:string|null;motivo_finalizacao?:string|null;grupo_id?:string|null;duracao_rateada_segundos?:number|null;quantidade_rateio?:number|null;criterio_rateio?:string|null};
 export type Operacao={id:string;codigo:string;descricao:string;status:string;sequencia:number;apontamentos?:Apontamento[]};
-export type Ordem = { id:string; numero_op:string; cliente:string; nf_entrada?:string|null; data_op?:string|null; prazo_dias?:number|null; prazo_estimado?:string|null; codigo_artigo?:string|null; artigo:string; pecas?:number; metros?:number; peso?:number; criado_em?:string|null;encerrada_em?:string|null;encerrada_por?:string|null;motivo_encerramento?:string|null;status:"rascunho"|"aguardando"|"em_producao"|"finalizada"|"cancelada"; operacoes?:Operacao[] };
+export type Ordem = { id:string; numero_op:string; cliente:string; nf_entrada?:string|null; data_op?:string|null; prazo_dias?:number|null; prazo_estimado?:string|null; codigo_artigo?:string|null; artigo:string; pecas?:number; metros?:number; peso?:number; criado_em?:string|null;encerrada_em?:string|null;encerrada_por?:string|null;motivo_encerramento?:string|null;dados_extraidos?:{origem?:string;parser_versao?:number;paginas?:number[];avisos?:string[];fluxo_auditado?:boolean}|null;status:"rascunho"|"aguardando"|"em_producao"|"finalizada"|"cancelada"; operacoes?:Operacao[] };
 export type Perfil={id:string;nome:string;perfil:string};
 export type Maquina={id:string;codigo:string;nome:string;setor:string|null};
 import type { ParsedOrder } from "./pdf-parser";
@@ -16,8 +16,8 @@ async function supabaseFetch(path:string,init:RequestInit={},token?:string){cons
 export async function signIn(email:string,password:string):Promise<Session>{const response=await supabaseFetch("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password})});const session=await response.json() as Session;saveSession(session);return session}
 export async function loadOrders(token:string):Promise<Ordem[]>{
   const operations="operacoes(id,codigo,descricao,status,sequencia,apontamentos(id,operador_id,maquina_id,inicio_em,termino_em,observacao,motivo_finalizacao,grupo_id,duracao_rateada_segundos,quantidade_rateio,criterio_rateio))";
-  const common=`id,numero_op,cliente,nf_entrada,data_op,codigo_artigo,artigo,pecas,metros,peso,status,criado_em,encerrada_em,encerrada_por,motivo_encerramento,${operations}`;
-  try{const response=await supabaseFetch(`/rest/v1/ordens_producao?select=id,numero_op,cliente,nf_entrada,data_op,prazo_dias,prazo_estimado,codigo_artigo,artigo,pecas,metros,peso,status,criado_em,encerrada_em,encerrada_por,motivo_encerramento,${operations}&order=criado_em.desc`,{},token);return response.json()}
+  const common=`id,numero_op,cliente,nf_entrada,data_op,codigo_artigo,artigo,pecas,metros,peso,status,criado_em,encerrada_em,encerrada_por,motivo_encerramento,dados_extraidos,${operations}`;
+  try{const response=await supabaseFetch(`/rest/v1/ordens_producao?select=id,numero_op,cliente,nf_entrada,data_op,prazo_dias,prazo_estimado,codigo_artigo,artigo,pecas,metros,peso,status,criado_em,encerrada_em,encerrada_por,motivo_encerramento,dados_extraidos,${operations}&order=criado_em.desc`,{},token);return response.json()}
   catch(error){if(!(error instanceof Error)||!/prazo_dias|prazo_estimado/i.test(error.message))throw error;const response=await supabaseFetch(`/rest/v1/ordens_producao?select=${common}&order=criado_em.desc`,{},token);const orders=await response.json() as Ordem[];return orders.map(order=>({...order,prazo_dias:null,prazo_estimado:null}))}
 }
 export async function loadProfiles(token:string):Promise<Perfil[]>{const response=await supabaseFetch("/rest/v1/perfis?select=id,nome,perfil&ativo=eq.true&order=nome",{},token);return response.json()}
@@ -41,11 +41,12 @@ export const adminUpdateOperator=(token:string,id:string,name:string)=>adminRpc(
 export const adminUpdateUser=(token:string,id:string,name:string,profile:"admin"|"operador"|"consulta")=>adminRpc(token,"admin_editar_usuario",{p_id:id,p_nome:name,p_perfil:profile});
 export const adminDeactivateOperator=(token:string,id:string)=>adminRpc(token,"admin_desativar_operador",{p_id:id});
 export const adminDeactivateMachine=(token:string,id:string)=>adminRpc(token,"admin_desativar_maquina",{p_id:id});
+export const adminAddMissingOperations=(token:string,id:string,operations:Array<{codigo:string;descricao:string}>,reason:string)=>adminRpc(token,"admin_adicionar_operacoes_faltantes",{p_ordem_id:id,p_operacoes:operations,p_motivo:reason});
 export async function createOperator(data:{nome:string;email:string;password:string}){const response=await supabaseFetch("/auth/v1/signup",{method:"POST",body:JSON.stringify({email:data.email.trim().toLowerCase(),password:data.password,data:{nome:data.nome.trim(),perfil:"operador"}})});const result=await response.json();if(result.user&&Array.isArray(result.user.identities)&&result.user.identities.length===0)throw new Error("Este e-mail já possui cadastro. Use outro endereço para o operador.")}
 export async function saveOrders(orders:ParsedOrder[],session:Session){
   for(const order of orders){
-    const {operacoes,...record}=order;
-    const response=await supabaseFetch("/rest/v1/ordens_producao?on_conflict=numero_op",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify({...record,status:"aguardando",criado_por:session.user.id,dados_extraidos:{origem:"pdf",conferido:true}})},session.access_token);
+    const {operacoes,paginas_origem,avisos_extracao,...record}=order;
+    const response=await supabaseFetch("/rest/v1/ordens_producao?on_conflict=numero_op",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify({...record,status:"aguardando",criado_por:session.user.id,dados_extraidos:{origem:"pdf",conferido:true,parser_versao:2,paginas:paginas_origem??[],avisos:avisos_extracao??[]}})},session.access_token);
     const [created]=await response.json();
     if(!created?.id)throw new Error(`O Supabase não retornou o cadastro da OP ${order.numero_op}.`);
     if(operacoes.length)await supabaseFetch("/rest/v1/operacoes?on_conflict=ordem_producao_id,sequencia",{

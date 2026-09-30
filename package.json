@@ -10,7 +10,7 @@
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "build:github": "vite build --config vite.github.config.ts",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs tests/pdf-parser.test.mjs tests/factory-time.test.mjs tests/deadline.test.mjs",
+    "test": "vite build --config vite.github.config.ts && node --experimental-strip-types --test tests/deadline.test.mjs tests/duration.test.mjs tests/factory-time.test.mjs tests/import-audit.test.mjs tests/machine-analytics.test.mjs tests/pdf-fields.test.mjs tests/pdf-parser.test.mjs tests/pdf-recognition.test.mjs tests/session-refresh.test.mjs tests/supabase-save.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
