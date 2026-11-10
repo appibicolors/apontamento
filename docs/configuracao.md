@@ -20,3 +20,25 @@ Qualquer futura chave `secret` será configurada exclusivamente no ambiente prot
 Variáveis previstas: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` e `GOOGLE_DRIVE_FOLDER_ID`.
 
 O banco armazena apenas o identificador do Drive, a URL, o hash e os dados extraídos. O PDF original permanece no Drive.
+
+## Microdata ERP
+
+A consulta de OPs do Microdata é feita exclusivamente pela Edge Function
+`consultar-op-microdata`. A chave privada nunca deve ser adicionada ao React,
+ao GitHub Pages ou ao repositório.
+
+Configure os secrets do projeto Supabase:
+
+```text
+MICRODATA_OP_API_BASE_URL=https://op-api.amerilink.cloud
+MICRODATA_OP_API_KEY=<chave fornecida pela TI>
+```
+
+Depois dos secrets, publique a função da pasta
+`supabase/functions/consultar-op-microdata`. A função autentica o usuário,
+consulta novamente o ERP antes da gravação e chama a RPC privada que cadastra
+a OP e todo o roteiro em uma única transação.
+
+A migração necessária é `supabase/018_integracao_microdata.sql`. Ela cria os
+contratos de gravação atômica para Microdata e PDF, sem limpar nem sobrescrever
+OPs existentes. A importação PDF permanece como contingência administrativa.
