@@ -4,7 +4,7 @@ test("Edge Function mantém chave Microdata somente em secret e valida perfil",a
  const source=await readFile(new URL("../supabase/functions/consultar-op-microdata/index.ts",import.meta.url),"utf8");
  assert.match(source,/Deno\.env\.get\("MICRODATA_OP_API_KEY"\)/);assert.match(source,/Deno\.env\.get\("MICRODATA_OP_API_BASE_URL"\)/);
  assert.match(source,/profile==="consulta"/);assert.match(source,/\/auth\/v1\/user/);assert.doesNotMatch(source,/Bearer\s+(?!\$\{key\})[A-Za-z0-9_-]{20,}/);
- assert.match(source,/invalid_quantities/);
+ assert.match(source,/invalid_quantities/);assert.match(source,/sameOpIdentifier/);assert.match(source,/normalizeMicrodataPayload/);for(const status of [400,401,404,409,429,503,504])assert.match(source,new RegExp(String(status)));
 });
 
 test("migração garante cadastro atômico, duplicidade e RPC privada",async()=>{
