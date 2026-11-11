@@ -16,5 +16,5 @@ test("fluxo automático consulta Supabase antes do ERP e deduplica chamadas em a
 test("telas individual e agrupada importam no Enter sem abrir conferência manual",async()=>{
  const individual=await readFile(new URL("../app/pointing-screen.tsx",import.meta.url),"utf8"),grouped=await readFile(new URL("../app/grouped-pointing.tsx",import.meta.url),"utf8");
  assert.match(individual,/onKeyDown=\{orderKey\}/);assert.match(individual,/ensureAutomaticOrder/);assert.match(individual,/requestRef/);assert.doesNotMatch(individual,/MicrodataImport/);
- assert.match(grouped,/onKeyDown=\{key\}/);assert.match(grouped,/onKeyDown=\{additionKey\}/);assert.match(grouped,/ensureAutomaticOrder/);assert.match(grouped,/requestRef/);
+ assert.match(grouped,/onKeyDown=\{key\}/);assert.match(grouped,/onKeyDown=\{additionKey\}/);assert.match(grouped,/ensureAutomaticOrder/);assert.match(grouped,/if\(!number\|\|importBusy\)return/);
 });

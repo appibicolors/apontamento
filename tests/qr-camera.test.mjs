@@ -33,7 +33,7 @@ test("câmera alimenta os mesmos fluxos individual e agrupado",async()=>{
  assert.match(individual,/confirmOrder\(undefined,value\)/);
  assert.match(individual,/onKeyDown=\{orderKey\}/);
  assert.match(grouped,/cameraMode/);
- assert.match(grouped,/resolveOrder\(mode,undefined,value\)/);
+ assert.match(grouped,/resolveOrder\("initial",undefined,value\)/);
  assert.match(grouped,/onKeyDown=\{additionKey\}/);
  assert.match(grouped,/setCameraMode\("addition"\)/);
 });

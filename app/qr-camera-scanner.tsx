@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {parseOpScan} from "./scanner";
 
-type Props={onDetected:(number:string)=>void;onClose:()=>void};
+type ScanMode="single"|"continuous";
+type Props={onDetected:(number:string)=>void|Promise<void>;onClose:()=>void;mode?:ScanMode;summary?:{total:number;compatible:number;pending:number;processing?:string;queued?:number;message?:string}};
 type ScannerControls={stop:()=>void};
 type NativeDetector={detect:(source:HTMLVideoElement)=>Promise<Array<{rawValue?:string}>>};
 type NativeDetectorConstructor={new(options:{formats:string[]}):NativeDetector;getSupportedFormats?:()=>Promise<string[]>};
@@ -16,15 +17,16 @@ function cameraMessage(error:unknown){
  return error instanceof Error?`Não foi possível abrir a câmera: ${error.message}`:"Não foi possível abrir a câmera. Use a digitação manual ou o leitor externo.";
 }
 
-export function QrCameraScanner({onDetected,onClose}:Props){
- const videoRef=useRef<HTMLVideoElement>(null),streamRef=useRef<MediaStream|null>(null),controlsRef=useRef<ScannerControls|null>(null),timerRef=useRef<number|null>(null),handledRef=useRef(false),mountedRef=useRef(true),invalidRef=useRef("");
+export function QrCameraScanner({onDetected,onClose,mode="single",summary}:Props){
+ const videoRef=useRef<HTMLVideoElement>(null),streamRef=useRef<MediaStream|null>(null),controlsRef=useRef<ScannerControls|null>(null),timerRef=useRef<number|null>(null),handledRef=useRef(false),mountedRef=useRef(true),invalidRef=useRef(""),lastAcceptedRef=useRef(""),onDetectedRef=useRef(onDetected);
+ onDetectedRef.current=onDetected;
  const [error,setError]=useState(""),[starting,setStarting]=useState(true),[devices,setDevices]=useState<MediaDeviceInfo[]>([]),[deviceId,setDeviceId]=useState<string|undefined>();
  const stop=useCallback(()=>{if(timerRef.current!==null){window.clearTimeout(timerRef.current);timerRef.current=null}controlsRef.current?.stop();controlsRef.current=null;streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;if(videoRef.current)videoRef.current.srcObject=null},[]);
- const accept=useCallback((raw:string)=>{if(handledRef.current)return;const number=parseOpScan(raw);if(!number){if(invalidRef.current!==raw){invalidRef.current=raw;setError("QR Code não reconhecido como Ordem de Produção.")}return}handledRef.current=true;stop();onDetected(number)},[onDetected,stop]);
+ const accept=useCallback(async(raw:string)=>{if(handledRef.current)return;const number=parseOpScan(raw);if(!number){if(invalidRef.current!==raw){invalidRef.current=raw;setError("QR Code não reconhecido como Ordem de Produção.")}return}if(mode==="continuous"&&lastAcceptedRef.current===number)return;handledRef.current=true;invalidRef.current="";setError("");if(mode==="single"){stop();onDetectedRef.current(number);return}lastAcceptedRef.current=number;try{await onDetectedRef.current(number)}finally{handledRef.current=false}},[mode,stop]);
  const start=useCallback(async(selected?:string)=>{stop();handledRef.current=false;invalidRef.current="";setError("");setStarting(true);try{
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("Este navegador não oferece acesso à câmera.");
   const constraints:MediaStreamConstraints={audio:false,video:selected?{deviceId:{exact:selected}}:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}};
-  const stream=await navigator.mediaDevices.getUserMedia(constraints);if(!mountedRef.current){stream.getTracks().forEach(track=>track.stop());return}streamRef.current=stream;
+  const stream=await navigator.mediaDevices.getUserMedia(constraints);if(!mountedRef.current){stream.getTracks().forEach(track=>track.stop());return}streamRef.current=stream;lastAcceptedRef.current="";
   const video=videoRef.current;if(!video)throw new Error("Visualizador da câmera indisponível.");video.srcObject=stream;await video.play();
   const cameras=(await navigator.mediaDevices.enumerateDevices()).filter(item=>item.kind==="videoinput");setDevices(cameras);const active=stream.getVideoTracks()[0]?.getSettings().deviceId;if(active)setDeviceId(active);
   const Detector=(window as unknown as {BarcodeDetector?:NativeDetectorConstructor}).BarcodeDetector;let native=false;
@@ -34,5 +36,5 @@ export function QrCameraScanner({onDetected,onClose}:Props){
  useEffect(()=>{mountedRef.current=true;const frame=window.requestAnimationFrame(()=>start());return()=>{window.cancelAnimationFrame(frame);mountedRef.current=false;stop()}},[start,stop]);
  function close(){stop();onClose()}
  function switchCamera(){if(devices.length<2)return;const current=Math.max(0,devices.findIndex(item=>item.deviceId===deviceId));const next=devices[(current+1)%devices.length];setDeviceId(next.deviceId);start(next.deviceId)}
- return <div className="qr-camera-backdrop" role="presentation"><section className="qr-camera" role="dialog" aria-modal="true" aria-labelledby="qr-camera-title"><header><div><p className="eyebrow">LEITURA PELA CÂMERA</p><h2 id="qr-camera-title">Ler QR Code da OP</h2></div><button type="button" onClick={close} aria-label="Fechar leitor da câmera">×</button></header><div className="qr-camera-preview"><video ref={videoRef} muted playsInline aria-label="Imagem ao vivo da câmera"/><div className="qr-camera-frame" aria-hidden="true"/><span>{starting?"Abrindo câmera…":"Aponte a câmera para o QR Code da OP"}</span></div>{error&&<p className="qr-camera-error" role="alert">{error}</p>}<footer>{devices.length>1&&<button type="button" className="qr-camera-switch" onClick={switchCamera} disabled={starting}>↻ Alternar câmera</button>}<button type="button" className="qr-camera-close" onClick={close}>Fechar e digitar manualmente</button></footer></section></div>
+ return <div className="qr-camera-backdrop" role="presentation"><section className="qr-camera" role="dialog" aria-modal="true" aria-labelledby="qr-camera-title"><header><div><p className="eyebrow">{mode==="continuous"?"PREPARAÇÃO DO GRUPO":"LEITURA PELA CÂMERA"}</p><h2 id="qr-camera-title">{mode==="continuous"?"Ler várias OPs":"Ler QR Code da OP"}</h2></div><button type="button" onClick={close} aria-label="Fechar leitor da câmera">×</button></header>{summary&&<div className="qr-camera-summary"><b>{summary.total} OPs lidas</b><span>✓ {summary.compatible} compatíveis</span><span>⚠ {summary.pending} precisam de conferência</span>{summary.processing&&<em>Processando OP {summary.processing}…</em>}{!!summary.queued&&<em>{summary.queued} leitura(s) aguardando</em>}</div>}<div className="qr-camera-preview"><video ref={videoRef} muted playsInline aria-label="Imagem ao vivo da câmera"/><div className="qr-camera-frame" aria-hidden="true"/><span>{starting?"Abrindo câmera…":"Aponte a câmera para o QR Code da OP"}</span></div>{summary?.message&&<p className="qr-camera-feedback" role="status">{summary.message}</p>}{error&&<p className="qr-camera-error" role="alert">{error}</p>}<footer>{devices.length>1&&<button type="button" className="qr-camera-switch" onClick={switchCamera} disabled={starting}>↻ Alternar câmera</button>}<button type="button" className="qr-camera-close" onClick={close}>{mode==="continuous"?"Concluir leitura":"Fechar e digitar manualmente"}</button></footer></section></div>
 }

@@ -31,7 +31,7 @@ Deno.serve(async(req:Request)=>{
  const profileResponse=await fetch(`${supabaseUrl}/rest/v1/perfis?id=eq.${encodeURIComponent(user.id)}&ativo=eq.true&select=perfil`,{headers:{Authorization:`Bearer ${serviceKey}`,apikey:serviceKey,Accept:"application/json"}});
  const profiles=await profileResponse.json().catch(()=>[]);const profile=profiles?.[0]?.perfil;
  if(!profile||profile==="consulta")return json({code:"forbidden",message:"Seu perfil não possui permissão para consultar ou cadastrar OPs no Microdata."},403);
- const input=await req.json().catch(()=>({}));const action=input.action==="cadastrar"?"cadastrar":"consultar";const number=clean(input.numero_op??input.numero);
+ const input=await req.json().catch(()=>({}));const action=input.action==="cadastrar"?"cadastrar":input.action==="atualizar_roteiro"?"atualizar_roteiro":"consultar";const number=clean(input.numero_op??input.numero);
  const company=clean(input.empresa);if(!/^\d{1,20}$/.test(number)||!/^[A-Za-z0-9_-]{0,20}$/.test(company))return json({code:"invalid_parameters",message:"Corrija o número da OP ou a empresa informada."},400);
  const upstream=await microdataFetch(base,apiKey,number,company);
  if(!upstream.ok){
@@ -43,6 +43,11 @@ Deno.serve(async(req:Request)=>{
  if(!canonical.numero_op||!sameOpIdentifier(canonical.numero_op,number))return json({code:"invalid_contract",message:"O Microdata retornou uma OP diferente da solicitada."},502);
  if(!canonical.operacoes.length||canonical.operacoes.some(item=>!/^\d{4}$/.test(item.codigo)||!item.descricao))return json({code:"invalid_route",message:"O Microdata não retornou um roteiro produtivo válido."},422);
  if(action==="consultar")return json(canonical);
+ if(action==="atualizar_roteiro"){
+  const orderId=clean(input.ordem_id);if(!/^[0-9a-f-]{36}$/i.test(orderId))return json({code:"invalid_order",message:"OP cadastrada inválida."},400);
+  const updated=await fetch(`${supabaseUrl}/rest/v1/rpc/atualizar_roteiro_microdata_backend`,{method:"POST",headers:{Authorization:`Bearer ${serviceKey}`,apikey:serviceKey,"Content-Type":"application/json"},body:JSON.stringify({p_usuario_id:user.id,p_ordem_id:orderId,p_empresa:canonical.empresa||company,p_operacoes:canonical.operacoes})});
+  const body=await updated.json().catch(()=>({}));if(!updated.ok)return json({code:"route_update_failed",message:body.message??body.error??"Não foi possível revalidar o roteiro."},updated.status);return json(body);
+ }
  const reviewed=input.ordem??{};const prazo=reviewed.prazo_dias==null?null:Number(reviewed.prazo_dias);
  if(prazo!=null&&(!Number.isInteger(prazo)||prazo<0||prazo>3650))return json({code:"invalid_deadline",message:"Prazo deve ser um número inteiro entre 0 e 3650 dias."},400);
  const numeric=(value:unknown,fallback:number|null)=>{if(value==null||value==="")return fallback;const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback};
